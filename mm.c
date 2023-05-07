@@ -103,21 +103,27 @@ int mm_init(void) {
   return 0;
 }
 
-void* find_fit(size_t size) {
-  // first fit
-  // void * pos = list_head;
-  // while (pos != bottom && GET_SIZE(pos) < size) {
-  //   pos = NEXT_BLKP_LIST(pos);
-  // }
-  // return pos;
+void* first_fit_front(size_t size) {
+  void * pos = list_head;
+  while (pos != bottom && GET_SIZE(pos) < size) {
+    pos = NEXT_BLKP_LIST(pos);
+  }
+  return pos;
+}
 
-  // first fit reverse
+void* first_fit_back(size_t size) {
   void * pos = list_tail;
   while (pos != bottom && GET_SIZE(pos) < size) {
     pos = PREV_BLKP_LIST(pos);
   }
   return pos;
-  
+}
+
+void* find_fit(size_t size) {
+  // if (size <= 64) return first_fit_front(size);
+  // else return first_fit_back(size);
+  return first_fit_back(size);
+
   // best fit
   // void * pos = list_head, *min_pos = bottom;
   // unsigned int min_size = 0xffffffff, cnt = 0;
@@ -146,10 +152,7 @@ void list_delete(void *p) {
   }
 }
 
-void list_insert(void *p) {
-#ifdef DEBUG
-  printf("list_insert: %lld %lld %lld %lld\n", (long long) p, (long long) PREV_RP(p), (long long) NEXT_RP(p), (long long) PREV_RP(list_head));
-#endif
+void list_push_front(void *p) {
   PUT(PREV_RP(p), 0);
   PUT(NEXT_RP(p), list_head - bottom);
   if (list_head != bottom) {
@@ -157,6 +160,25 @@ void list_insert(void *p) {
   }
   if (list_tail == bottom) list_tail = p;
   list_head = p;
+}
+
+void list_push_back(void *p) {
+  PUT(PREV_RP(p), list_tail - bottom);
+  PUT(NEXT_RP(p), 0);
+  if (list_tail != bottom) {
+    PUT(NEXT_RP(list_tail), p - bottom);
+  }
+  if (list_head == bottom) list_head = p;
+  list_tail = p;
+}
+
+void list_insert(void *p) {
+#ifdef DEBUG
+  printf("list_insert: %lld %lld %lld %lld\n", (long long) p, (long long) PREV_RP(p), (long long) NEXT_RP(p), (long long) PREV_RP(list_head));
+#endif
+  // if (GET_SIZE(p) <= 64) list_push_front(p);
+  // else list_push_back(p);
+  list_push_front(p);
 }
 
 void* split_block(void * bp, int size) {
@@ -449,8 +471,8 @@ void print_mem_blocks() {
  * mm_checkheap - check heap
  */
 void mm_checkheap(int verbose) {
+#ifdef DEBUG    
   printf("begin mm_checkheap %d\n", verbose);
-#ifdef DEBUG  
   // check mem_block
   printf("memcheck_list_head: %lld\n", (long long) list_head);
   void * pos = bottom + WSIZE;
